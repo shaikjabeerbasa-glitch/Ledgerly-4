@@ -1,0 +1,33 @@
+npm warn Unknown env config "http-proxy". This will stop working in the next major version of npm.
+
+> test
+> node --test tests/*.test.js
+
+Could not load stored state, using defaults. SyntaxError: Expected property name or '}' in JSON at position 1 (line 1 column 2)
+    at JSON.parse (<anonymous>)
+    at loadState (file:///workspace/scratch/fc5f69153c3e/Ledgerly/js/storage.js:26:25)
+    at TestContext.<anonymous> (file:///workspace/scratch/fc5f69153c3e/Ledgerly/tests/core.test.js:9:241)
+    at Test.runInAsyncScope (node:async_hooks:227:14)
+    at Test.run (node:internal/test_runner/test:1382:25)
+    at Test.processPendingSubtests (node:internal/test_runner/test:960:18)
+    at Test.postRun (node:internal/test_runner/test:1522:19)
+    at Test.run (node:internal/test_runner/test:1447:12)
+    at async Test.processPendingSubtests (node:internal/test_runner/test:960:7)
+✔ valid shared parent categories and full JSON backup roundtrip (7.163044ms)
+✔ reject corrupted records and unpaired transfers (1.958695ms)
+✔ corrupted local storage recovers and retains raw recovery copy (2.489285ms)
+✔ category nesting limited to one level (1.193452ms)
+✔ dates, transfer destinations and custom intervals validated (0.666068ms)
+✔ CSV handles multiline notes, escaped quotes, BOM, mapping and per-row validation (2.226869ms)
+✔ parent category budgets include child spending (0.47696ms)
+✔ combined filters and multi-column sorting (14.690483ms)
+PASS DOM integration: CRUD all forms; transfers; undo/redo; recurring deduplication; filtering; bulk recategorization; cascades; persisted integrity
+✔ tests/dom.test.js (5333.482623ms)
+ℹ tests 9
+ℹ suites 0
+ℹ pass 9
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 5347.268985

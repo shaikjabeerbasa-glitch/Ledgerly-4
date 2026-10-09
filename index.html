@@ -1,0 +1,430 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Ledgerly</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <a class="skip-link" href="#main-content">Skip to content</a>
+    <p id="storage-notice" role="status" hidden>Could not save. Storage is unavailable; changes are in memory only. Export a JSON backup.</p>
+    <div class="app-shell">
+      <header class="topbar">
+        <div class="brand-wrap">
+          <div class="brand-icon">L</div>
+          <div>
+            <h1>Ledgerly</h1>
+          </div>
+        </div>
+        <nav class="topnav" id="top-nav" aria-label="Main navigation"></nav>
+        <div class="topbar-actions">
+          <label class="currency-select-wrap">
+            <span>Currency</span>
+            <select id="header-currency-select" aria-label="Select display currency">
+              <option value="USD">USD</option>
+              <option value="INR">INR</option>
+            </select>
+          </label>
+          <button id="theme-toggle" class="secondary-btn" type="button" aria-label="Toggle light and dark theme">🌙</button>
+          <button id="undo-btn" class="secondary-btn" type="button">Undo</button>
+          <button id="redo-btn" class="secondary-btn" type="button">Redo</button>
+        </div>
+      </header>
+
+      <main id="main-content" class="main-layout" tabindex="-1">
+        <section id="dashboard-view" class="view" data-route="dashboard">
+          <div class="view-header">
+            <h2 tabindex="-1">Dashboard</h2>
+          </div>
+          <div class="stats-grid" id="dashboard-stats"></div>
+          <div class="charts-grid">
+            <div class="card chart-card">
+              <h3>Spending by category</h3>
+              <canvas id="categoryChart" aria-label="Spending by category chart"></canvas>
+            </div>
+            <div class="card chart-card">
+              <h3>Income vs expense trend</h3>
+              <canvas id="trendChart" aria-label="Income and expense trend chart"></canvas>
+            </div>
+          </div>
+        </section>
+
+        <section id="accounts-view" class="view" data-route="accounts">
+          <div class="view-header">
+            <h2 tabindex="-1">Accounts</h2>
+          </div>
+          <div class="split-layout">
+            <div class="card list-shell">
+              <div id="account-list" class="account-list"></div>
+            </div>
+            <div class="card form-shell">
+              <h3 id="account-form-title">Add account</h3>
+              <form id="account-form" class="stack-form">
+                <input type="hidden" name="accountId" />
+                <label>
+                  Name
+                  <input type="text" name="name" required />
+                </label>
+                <label>
+                  Type
+                  <select name="type">
+                    <option value="cash">Cash</option>
+                    <option value="bank">Bank</option>
+                    <option value="credit">Credit Card</option>
+                    <option value="investment">Investment</option>
+                    <option value="loan">Loan</option>
+                  </select>
+                </label>
+                <label>
+                  Opening balance
+                  <input type="number" name="openingBalance" step="0.01" value="0" />
+                </label>
+                <label>
+                  Color
+                  <input type="color" name="color" value="#2f80ed" />
+                </label>
+                <div class="form-actions">
+                  <button type="submit" class="primary-btn" aria-label="Save account">Save account</button>
+                  <button type="button" class="secondary-btn" id="cancel-account-edit" aria-label="Cancel account edit">Cancel</button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </section>
+
+        <section id="transactions-view" class="view" data-route="transactions">
+          <div class="view-header">
+            <h2 tabindex="-1">Transactions</h2>
+          </div>
+          <div class="card filter-card">
+            <form id="transaction-filter-form" class="filters-grid">
+              <label>
+                From
+                <input type="date" name="startDate" />
+              </label>
+              <label>
+                To
+                <input type="date" name="endDate" />
+              </label>
+              <label>
+                Account
+                <select name="accountId">
+                  <option value="">All</option>
+                </select>
+              </label>
+              <label>
+                Category
+                <select name="categoryId">
+                  <option value="">All</option>
+                </select>
+              </label>
+              <label>
+                Type
+                <select name="type">
+                  <option value="">All</option>
+                  <option value="income">Income</option>
+                  <option value="expense">Expense</option>
+                  <option value="transfer">Transfer</option>
+                </select>
+              </label>
+              <label>
+                Min amount
+                <input type="number" name="minAmount" step="0.01" />
+              </label>
+              <label>
+                Max amount
+                <input type="number" name="maxAmount" step="0.01" />
+              </label>
+              <label>
+                Search
+                <input type="search" name="search" placeholder="Payee, notes, tags" />
+              </label>
+              <div class="button-row">
+                <button type="submit" class="primary-btn">Apply</button>
+                <button type="button" class="secondary-btn" id="reset-filters-btn">Reset</button>
+              </div>
+            </form>
+          </div>
+
+          <div class="card table-shell">
+            <div class="toolbar">
+              <div class="bulk-actions">
+                <label class="checkbox-inline"><input type="checkbox" id="select-all-transactions" /> Select all</label>
+                <button type="button" class="danger-btn" id="bulk-delete-btn">Delete selected</button>
+                <select id="bulk-category-select" aria-label="Bulk category select">
+                  <option value="">Re-categorize to...</option>
+                </select>
+                <button type="button" class="secondary-btn" id="bulk-recategorize-btn">Apply</button>
+              </div>
+              <div class="page-size-wrap">
+                <label>
+                  Rows
+                  <select id="page-size-select">
+                    <option value="10">10</option>
+                    <option value="25">25</option>
+                    <option value="50">50</option>
+                  </select>
+                </label>
+              </div>
+            </div>
+            <table>
+              <thead>
+                <tr>
+                  <th scope="col"><span class="visually-hidden">Select transaction</span></th>
+                  <th><button class="sort-btn" data-sort="date" type="button">Date</button></th>
+                  <th><button class="sort-btn" data-sort="type" type="button">Type</button></th>
+                  <th><button class="sort-btn" data-sort="accountId" type="button">Account</button></th>
+                  <th><button class="sort-btn" data-sort="categoryId" type="button">Category</button></th>
+                  <th><button class="sort-btn" data-sort="payee" type="button">Payee</button></th>
+                  <th><button class="sort-btn" data-sort="amount" type="button">Amount</button></th>
+                  <th>Tags</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="transaction-table-body"></tbody>
+            </table>
+            <div class="pagination" id="transaction-pagination"></div>
+          </div>
+
+          <div class="card form-shell">
+            <h3 id="transaction-form-title">Add transaction</h3>
+            <form id="transaction-form" class="stack-form">
+              <input type="hidden" name="transactionId" />
+              <input type="hidden" name="transferGroupId" />
+              <div class="two-col-grid">
+                <label>
+                  Type
+                  <select name="type" required>
+                    <option value="expense">Expense</option>
+                    <option value="income">Income</option>
+                    <option value="transfer">Transfer</option>
+                  </select>
+                </label>
+                <label>
+                  Date
+                  <input type="date" name="date" required />
+                </label>
+              </div>
+              <div class="two-col-grid">
+                <label>
+                  Account
+                  <select name="accountId" required></select>
+                </label>
+                <label id="transfer-target-wrap" class="hidden">
+                  To account
+                  <select name="toAccountId"></select>
+                </label>
+              </div>
+              <div class="two-col-grid">
+                <label>
+                  Amount
+                  <input type="number" name="amount" step="0.01" min="0.01" required />
+                </label>
+                <label>
+                  Category
+                  <select name="categoryId"></select>
+                </label>
+              </div>
+              <label>
+                Payee
+                <input type="text" name="payee" placeholder="e.g. Grocery Market" />
+              </label>
+              <label>
+                Notes
+                <textarea name="notes" rows="3" placeholder="Optional notes"></textarea>
+              </label>
+              <label>
+                Tags
+                <input type="text" name="tags" placeholder="comma separated tags" />
+              </label>
+              <div class="form-actions">
+                <button type="submit" class="primary-btn">Save transaction</button>
+                <button type="button" class="secondary-btn" id="cancel-transaction-edit">Cancel</button>
+              </div>
+            </form>
+          </div>
+        </section>
+
+        <section id="budgets-view" class="view" data-route="budgets">
+          <div class="view-header">
+            <h2 tabindex="-1">Budgets</h2>
+          </div>
+          <div class="split-layout">
+            <div class="card list-shell">
+              <div id="budget-list" class="budget-list"></div>
+            </div>
+            <div class="card form-shell">
+              <h3 id="budget-form-title">Add budget</h3>
+              <form id="budget-form" class="stack-form">
+                <input type="hidden" name="budgetId" />
+                <label>
+                  Category
+                  <select name="categoryId" required></select>
+                </label>
+                <label>
+                  Month
+                  <input type="month" name="month" required />
+                </label>
+                <label>
+                  Limit
+                  <input type="number" name="limit" min="0" step="0.01" required />
+                </label>
+                <div class="form-actions">
+                  <button type="submit" class="primary-btn">Save budget</button>
+                  <button type="button" class="secondary-btn" id="cancel-budget-edit">Cancel</button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </section>
+
+        <section id="categories-view" class="view" data-route="categories">
+          <div class="view-header">
+            <h2 tabindex="-1">Categories</h2>
+          </div>
+          <div class="split-layout">
+            <div class="card list-shell">
+              <div id="category-tree" class="category-tree"></div>
+            </div>
+            <div class="card form-shell">
+              <h3 id="category-form-title">Add category</h3>
+              <form id="category-form" class="stack-form">
+                <input type="hidden" name="categoryId" />
+                <label>
+                  Name
+                  <input type="text" name="name" required />
+                </label>
+                <label>
+                  Parent category
+                  <select name="parentId">
+                    <option value="">None</option>
+                  </select>
+                </label>
+                <div class="form-actions">
+                  <button type="submit" class="primary-btn">Save category</button>
+                  <button type="button" class="secondary-btn" id="cancel-category-edit">Cancel</button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </section>
+
+        <section id="recurring-view" class="view" data-route="recurring">
+          <div class="view-header">
+            <h2 tabindex="-1">Recurring transactions</h2>
+          </div>
+          <div class="split-layout">
+            <div class="card list-shell">
+              <div id="recurring-list" class="recurring-list"></div>
+            </div>
+            <div class="card form-shell">
+              <h3 id="recurring-form-title">Add recurring rule</h3>
+              <form id="recurring-form" class="stack-form">
+                <input type="hidden" name="recurringId" />
+                <label>
+                  Title
+                  <input type="text" name="title" required />
+                </label>
+                <div class="two-col-grid">
+                  <label>
+                    Type
+                    <select name="type" required>
+                      <option value="expense">Expense</option>
+                      <option value="income">Income</option>
+                    </select>
+                  </label>
+                  <label>
+                    Amount
+                    <input type="number" name="amount" min="0.01" step="0.01" required />
+                  </label>
+                </div>
+                <div class="two-col-grid">
+                  <label>
+                    Account
+                    <select name="accountId" required></select>
+                  </label>
+                  <label>
+                    Category
+                    <select name="categoryId"></select>
+                  </label>
+                </div>
+                <label>
+                  Interval
+                  <select name="interval" required>
+                    <option value="daily">Daily</option>
+                    <option value="weekly">Weekly</option>
+                    <option value="monthly">Monthly</option>
+                    <option value="custom">Custom</option>
+                  </select>
+                </label>
+                <label id="custom-days-wrap" class="hidden">
+                  Custom days interval
+                  <input type="number" name="customDays" min="1" step="1" value="7" />
+                </label>
+                <label>
+                  Next run date
+                  <input type="date" name="nextRunDate" required />
+                </label>
+                <label>
+                  Payee
+                  <input type="text" name="payee" />
+                </label>
+                <div class="form-actions">
+                  <button type="submit" class="primary-btn">Save rule</button>
+                  <button type="button" class="secondary-btn" id="cancel-recurring-edit">Cancel</button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </section>
+
+        <section id="settings-view" class="view" data-route="settings">
+          <div class="view-header">
+            <h2 tabindex="-1">Settings & backup</h2>
+          </div>
+          <div class="card settings-card">
+            <div class="settings-preferences">
+              <label class="currency-field">
+                <span>Display currency</span>
+                <select id="settings-currency-select" aria-label="Select display currency">
+                  <option value="USD">USD ($)</option>
+                  <option value="INR">INR (₹)</option>
+                </select>
+              </label>
+            </div>
+            <div class="stack-actions">
+              <button id="export-json-btn" class="primary-btn" type="button">Export JSON backup</button>
+              <button type="button" id="open-json-import" class="primary-btn">Import JSON backup</button>
+              <input aria-label="Choose JSON backup file" id="import-json-input" type="file" accept="application/json" hidden />
+              <button id="export-csv-btn" class="secondary-btn" type="button">Export CSV</button>
+              <button type="button" id="open-csv-import" class="secondary-btn">Import CSV</button>
+              <input aria-label="Choose CSV file" id="import-csv-input" type="file" accept=".csv,text/csv" hidden />
+              <button id="seed-data-btn" class="secondary-btn" type="button">Load demo data</button>
+              <button id="clear-storage-btn" class="secondary-btn" type="button">Clear saved data</button>
+              <button id="reset-data-btn" class="danger-btn" type="button">Reset all data</button>
+            </div>
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <div id="toast-container" aria-live="polite" aria-atomic="true"></div>
+
+    <div id="mapping-modal" class="modal hidden" aria-hidden="true" role="dialog" aria-modal="true" aria-label="Map CSV columns">
+      <div class="modal-dialog">
+        <h3>Map CSV columns</h3>
+        <form id="csv-mapping-form">
+          <pre id="csv-errors" role="alert"></pre>
+          <div id="csv-mapping-fields" class="mapping-grid"></div>
+          <div class="form-actions">
+            <button type="submit" class="primary-btn">Import rows</button>
+            <button type="button" class="secondary-btn" id="close-mapping-modal">Cancel</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <script type="module" src="./js/app.js"></script>
+  </body>
+</html>
