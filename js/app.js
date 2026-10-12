@@ -16,6 +16,7 @@ import { STORAGE_KEY, importJsonBackup, loadState, exportJsonBackup, exportCsvTr
 import { bindRouteHandler, getRouteFromHash, setHashRoute } from './routing.js';
 import { renderApp, renderCharts } from './render.js';
 import {
+  isValidDate,
   validateAccountForm,
   validateBudgetForm,
   validateCategoryForm,
@@ -591,6 +592,60 @@ function parseTags(value) {
     .filter((tag, index, all) => tag && all.indexOf(tag) === index);
 }
 
+function formatKeyboardDateDigits(value) {
+  const digits = String(value || '').replace(/\D/g, '');
+  if (digits.length !== 8) return '';
+
+  let year = digits.slice(0, 4);
+  let month = digits.slice(4, 6);
+  let day = digits.slice(6, 8);
+
+  if (Number(digits.slice(0, 2)) <= 12 && Number(digits.slice(2, 4)) <= 31) {
+    month = digits.slice(0, 2);
+    day = digits.slice(2, 4);
+    year = digits.slice(4, 8);
+  }
+
+  if (!/^[1-9]\d{3}$/.test(year) || Number(month) < 1 || Number(month) > 12 || Number(day) < 1 || Number(day) > 31) {
+    return '';
+  }
+
+  const iso = `${year}-${String(Number(month)).padStart(2, '0')}-${String(Number(day)).padStart(2, '0')}`;
+  return isValidDate(iso) ? iso : '';
+}
+
+function normalizeDateInputs() {
+  document.querySelectorAll('input[type="date"], input[type="month"]').forEach((input) => {
+    input.type = 'text';
+    input.setAttribute('inputmode', 'numeric');
+    input.setAttribute('autocomplete', 'off');
+    input.setAttribute('placeholder', input.name === 'month' ? 'YYYY-MM' : 'YYYY-MM-DD');
+  });
+}
+
+function handleKeyboardDateInput(event) {
+  const target = event.target;
+  const isInputElement = target && typeof target === 'object' && 'value' in target && (typeof HTMLInputElement === 'undefined' ? target.tagName === 'INPUT' : target instanceof HTMLInputElement);
+  if (!isInputElement) return;
+  if (!['date', 'nextRunDate', 'startDate', 'endDate', 'month'].includes(target.name)) return;
+
+  const digits = target.value.replace(/\D/g, '');
+  if (target.name === 'month') {
+    if (/^\d{6}$/.test(digits)) {
+      const year = digits.slice(0, 4);
+      const month = digits.slice(4, 6);
+      const iso = `${year}-${month}`;
+      if (/^\d{4}-(0[1-9]|1[0-2])$/.test(iso)) target.value = iso;
+    }
+    return;
+  }
+
+  if (/^\d{8}$/.test(digits)) {
+    const iso = formatKeyboardDateDigits(digits);
+    if (iso) target.value = iso;
+  }
+}
+
 function formatLocalDate(date) {
   const year = date.getFullYear();
   const month = String(date.getMonth() + 1).padStart(2, '0');
@@ -1151,6 +1206,14 @@ function attachGlobalListeners() {
     });
   });
 
+  document.addEventListener('input', (event) => {
+    const target = event.target;
+    const isInputElement = target && typeof target === 'object' && 'value' in target && (typeof HTMLInputElement === 'undefined' ? target.tagName === 'INPUT' : target instanceof HTMLInputElement);
+    if (isInputElement && ['date', 'nextRunDate', 'startDate', 'endDate', 'month'].includes(target.name)) {
+      handleKeyboardDateInput(event);
+    }
+  });
+
   document.addEventListener('keydown', (event) => {
     if (event.target.matches('input, textarea, select, [contenteditable]')) return;
     if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'z' && !event.shiftKey) {
@@ -1174,6 +1237,7 @@ function attachGlobalListeners() {
 }
 
 function initialize() {
+  normalizeDateInputs();
   const stored = loadState();
   setState(stored);
   applyRecurringTransactions(false);
