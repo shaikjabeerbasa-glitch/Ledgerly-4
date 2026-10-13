@@ -6,7 +6,7 @@ export default defineConfig({
   fullyParallel: true, workers: process.env.CI ? 2 : 4,
   reporter: [['list'], ['html', { open: 'never', outputFolder: reportRoot + '/playwright-report' }], ['json', { outputFile: reportRoot + '/test-results/results.json' }]],
   use: { baseURL: process.env.LEDGERLY_BASE_URL || 'http://127.0.0.1:8776', timezoneId: 'Asia/Kolkata', trace: 'retain-on-failure', screenshot: 'only-on-failure' },
-  webServer: process.env.LEDGERLY_BASE_URL ? undefined : { command: 'python3 -m http.server 8776 --bind 127.0.0.1', url:'http://127.0.0.1:8776', reuseExistingServer: !process.env.CI },
+  webServer: process.env.LEDGERLY_BASE_URL ? undefined : { command: 'python3 tests/serve.py', url:'http://127.0.0.1:8776', reuseExistingServer: !process.env.CI },
   projects: [
     { name: 'chromium', use: {...devices['Desktop Chrome'], launchOptions: executablePath ? { executablePath, args:['--no-sandbox','--disable-dev-shm-usage','--disable-gpu'] } : {} } },
     { name: 'firefox', use: {...devices['Desktop Firefox'], launchOptions: { firefoxUserPrefs: { 'accessibility.tabfocus': 7 } } } },

@@ -14,20 +14,29 @@ export async function boot(page:Page, data:any=seed(), route='dashboard') {
  // Once per tab: reload must exercise real persistence rather than reseeding.
  await page.addInitScript(({data,key})=>{if(!sessionStorage.getItem('seeded')){localStorage.setItem(key,JSON.stringify(data));sessionStorage.setItem('seeded','yes');}},{data,key:KEY});
  await page.goto('/#/'+route);await expect(page.locator('#top-nav a')).toHaveCount(7);
+ // A screenshot forces a real WebKit paint; the installed clock mocks rAF.
+ // This settles inherited theme colors before accessibility reads styles.
+ if(page.context().browser()?.browserType().name()==='webkit')await page.screenshot({animations:'disabled'});
 }
 export async function state(page:Page) {return page.evaluate(async key=>navigator.locks ? navigator.locks.request('ledgerly-state-write',()=>JSON.parse(localStorage.getItem(key)!)) : JSON.parse(localStorage.getItem(key)!),KEY);}
 export async function route(page:Page, name:string) {await page.locator(`a[data-route="/${name}"]`).click();await expect(page.locator('.view.active')).toHaveAttribute('data-route',name);}
 export async function fill(page:Page, id:string, values:Record<string,any>) {for(const [key,value]of Object.entries(values)){const field=page.locator(`#${id} [name="${key}"]`);if(await field.evaluate(el=>el.tagName==='SELECT'))await field.selectOption(String(value));else await field.fill(String(value));}}
-export async function submit(page:Page,id:string) {await page.locator(`#${id} button[type=submit]`).click();}
+export async function submit(page:Page,id:string) {
+ await page.locator(`#${id} button[type=submit]`).click();
+ // Wait for queued persistence and rendering before filling the next form.
+ await page.evaluate(async()=>{if(navigator.locks)await navigator.locks.request('ledgerly-state-write',()=>{});});
+}
 export async function add(page:Page, values:any={}) {const fields={type:'expense',date:'2026-10-08',accountId:'cash',categoryId:'food',amount:10,payee:'New',...values};if(fields.type==='transfer')delete fields.categoryId;await fill(page,'transaction-form',fields);await submit(page,'transaction-form');}
 export async function invariant(page:Page){const s=await state(page);const groups=new Map<string,any[]>();for(const t of s.transactions)if(t.type==='transfer')groups.set(t.transferGroupId,[...(groups.get(t.transferGroupId)||[]),t]);for(const pair of groups.values()){expect(pair).toHaveLength(2);expect(new Set(pair.map(t=>t.transferSide)).size).toBe(2);expect(pair[0].amount).toBe(pair[1].amount);expect(pair[0].date).toBe(pair[1].date);expect(pair[0].accountId).not.toBe(pair[1].accountId);}const net=s.accounts.reduce((n:any,a:any)=>n+Math.round(a.openingBalance*100),0)+s.transactions.reduce((n:any,t:any)=>n+(t.type==='income'?1:t.type==='expense'?-1:0)*Math.round(t.amount*100),0);await route(page,'dashboard');await expect(page.locator('#dashboard-stats .stat-value').first()).toHaveText(new Intl.NumberFormat(s.currency==='INR'?'en-IN':'en-US',{style:'currency',currency:s.currency}).format(net/100));}
 export async function csv(page:Page,text:string){await page.setInputFiles('#import-csv-input',{name:'rows.csv',mimeType:'text/csv',buffer:Buffer.from(text)});await expect(page.locator('#mapping-modal')).toBeVisible();}
 export async function tabTo(page:Page, selector:string) {
  const target=page.locator(selector);await expect(target).toBeVisible();await expect(target).toBeEnabled();
+ // macOS WebKit uses Option+Tab to include links and form controls.
+ const allControls=process.platform==='darwin'&&page.context().browser()?.browserType().name()==='webkit';
  for(let i=0;i<150;i++){
   const direction=await target.evaluate(el=>el===document.activeElement?'done':el.compareDocumentPosition(document.activeElement!)&Node.DOCUMENT_POSITION_FOLLOWING?'Shift+Tab':'Tab');
   if(direction==='done')return;
-  await page.keyboard.press(direction);
+  await page.keyboard.press(allControls?'Alt+'+direction:direction);
  }
  throw new Error('Keyboard cannot reach '+selector);
 }
